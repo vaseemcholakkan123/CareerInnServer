@@ -93,6 +93,12 @@ class UserLogin(APIView):
 
             if user:
 
+                if user.is_blocked:
+                    return Response(
+                            status=status.HTTP_400_BAD_REQUEST,
+                            data={"message": "Account banned"},
+                        )
+
                 if not user.is_verified:
                     return Response(
                             status=status.HTTP_400_BAD_REQUEST,
@@ -457,7 +463,7 @@ class UpdateProject(generics.RetrieveUpdateDestroyAPIView):
         return super().perform_update(serializer)
     
     def perform_destroy(self, instance):
-        print(instance.user , self.request.user)
+        
         if not instance.user == self.request.user:
             return Response(status=status.HTTP_401_UNAUTHORIZED,data={'message':'Not Authorized'})
         return super().perform_destroy(instance)

@@ -17,6 +17,21 @@ class CreateUserSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+class AdminUserSerializer(serializers.ModelSerializer):
+    posts_got_reported = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ("id","username","info", "posts_got_reported" , "is_blocked" , 'profile')
+
+    def get_posts_got_reported(self,usr):
+        if isinstance(usr,AnonymousUser):
+            return 0
+
+        return Report.objects.filter(post__posted_user=usr).count()
+        
+
+
 class UserSerializer(serializers.ModelSerializer):
     is_ceo = serializers.SerializerMethodField()
     class Meta:
@@ -188,3 +203,16 @@ class CreateReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
         fields = '__all__'
+
+class ReportSerializer(serializers.ModelSerializer):
+    post = postsSeriallizer(many=False)
+    user = UserSerializer(many=False)
+    total_reports = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Report
+        fields = '__all__'
+
+    def get_total_reports(self,obj):
+        reports = Report.objects.filter(post=obj.post)
+        return reports.count()

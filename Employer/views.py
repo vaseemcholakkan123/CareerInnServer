@@ -182,20 +182,59 @@ class UserJobs(generics.ListAPIView):
     serializer_class = CompanyJobSerializer
     pagination_class = NormalPagination
     
+
+
     def get_queryset(self):
-        # skills = self.request.user.skills.all()
-
-        # if skills.exists():
-        #     queryset = Job.objects.filter(is_closed=False,skills_required__in=skills)
-        #     # print('bef',queryset.count())
-        #     # queryset = queryset.annotate(has_matching_skills=Value(True,output_field=BooleanField())).order_by('-has_matching_skills')
-        #     self.queryset = queryset + Job.objects.filter(is_closed=False,skills_required__not__in=skills)
-
-        # else:
-        
+      
+        work_type = self.request.GET.get('work_type')
+        work_time = self.request.GET.get('work_time')
+        department = self.request.GET.get('department')
+        skills = self.request.GET.get('skills')
+        skills_arr = []
         self.queryset = Job.objects.filter(is_closed=False)
-        
 
+        if not work_type and not work_time and not department and not skills:
+            user_skills = self.request.user.skills.all()
+            local_q = self.queryset.filter(skills_required__in=user_skills).distinct()
+            print(local_q[0].name,'llllllllllll')
+
+            print('disabled')
+            self.queryset = self.queryset.exclude(pk__in=local_q)
+            for s in self.queryset:
+                print(s.name)
+
+            print('final========')
+            self.queryset = local_q | self.queryset.distinct()
+
+            for s in self.queryset:
+                print(s.name)
+            # self.queryset = self.queryset.distinct()
+
+
+        if work_type:
+            self.queryset = self.queryset.filter(job_type=work_type)
+        if work_time:
+            self.queryset = self.queryset.filter(job_time=work_time)
+
+        if skills:
+            tmp = ''
+            for id in skills:
+                if id != "'" and id != ',':
+                    tmp += id
+                if id == ',':
+                    skills_arr.append(int(tmp))
+                    tmp = ''
+
+            skills_arr.append(int(tmp))
+
+
+
+            self.queryset = self.queryset.filter(skills_required__in=skills_arr).distinct()
+
+        if department:
+            department = Department.objects.filter(id=department)
+            if department.exists():
+                self.queryset = self.queryset.filter(company__department=department.first())
 
         return super().get_queryset()
     
