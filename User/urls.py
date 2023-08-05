@@ -48,7 +48,7 @@ urlpatterns = [
     path('saveUnsave-Post/',views.SaveUnsavePost.as_view(),name='save-unsave-post'),
     path('get-otp-for-reset/',views.GetForReset.as_view(),name='get-reset-otp'),
     path('change-password/',views.ChangePassword.as_view(),name='change-password'),
-
+    path('get-notification-count/',views.GetNotficationCount.as_view()),
     #  Post urls
 
     path('like-post/<post_id>',views.LikePost.as_view(),name='like_post'),

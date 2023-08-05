@@ -5,10 +5,9 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from User.models import User, Report, Post
 from django.contrib.auth import authenticate
 from Employer.models import Department
-from Employer.serializers import DepartmentSerializer
 from rest_framework.viewsets import ModelViewSet
 from .serializers import NewsSerializer, AdminDepartmentSerializer
-from User.views import NormalPagination
+from User.views import NormalPagination,SmallPagination
 from .models import *
 from User.serailizers import ReportSerializer,AdminUserSerializer
 from User.signals import post_banned
@@ -210,3 +209,10 @@ class RetrieveUsers(generics.ListAPIView):
     serializer_class = AdminUserSerializer
     queryset = User.objects.all()
     pagination_class = NormalPagination
+
+
+class GetNews(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = News.objects.all()
+    serializer_class  = NewsSerializer
+    pagination_class = SmallPagination

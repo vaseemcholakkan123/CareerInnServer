@@ -99,17 +99,17 @@ class UserLogin(APIView):
                             data={"message": "Account banned"},
                         )
 
-                if not user.is_verified:
+                if not user.is_verified and not user.is_superuser:
                     return Response(
                             status=status.HTTP_400_BAD_REQUEST,
                             data={"message": "Account not verified"},
                         )
                 if user.profile:
-                    prof = "http://127.0.0.1:8000" + user.profile.url
+                    prof = "http://10.4.2.62:8000" + user.profile.url
                 else:
                     prof = None
                 if user.banner:
-                    banner = "http://127.0.0.1:8000" + user.banner.url
+                    banner = "http://10.4.2.62:8000" + user.banner.url
                 else:
                     banner = None
                 user_data = {
@@ -331,7 +331,7 @@ class ChangeDetails(APIView):
         try:
             request.user.save()
             if request.user.banner:
-                banner = "http://127.0.0.1:8000" + request.user.banner.url
+                banner = "http://10.4.2.62:8000" + request.user.banner.url
             else:
                 banner = None
             user_data = {
@@ -341,7 +341,7 @@ class ChangeDetails(APIView):
                     "location":request.user.location,
                     "user_id": request.user.id,
                     "banner":banner,
-                    "profile": "http://127.0.0.1:8000" + request.user.profile.url,
+                    "profile": "http://10.4.2.62:8000" + request.user.profile.url,
                     "email": request.user.email,
                 }
             return Response(status=status.HTTP_200_OK,data={'user':user_data})
@@ -357,7 +357,7 @@ class ChangeProfilePicture(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST,data='No embedded profile')
         request.user.profile.save(profile.name, profile, save=True)
         if request.user.banner:
-            banner = "http://127.0.0.1:8000" + request.user.banner.url
+            banner = "http://10.4.2.62:8000" + request.user.banner.url
         else:
             banner = None
         user_data = {
@@ -367,7 +367,7 @@ class ChangeProfilePicture(APIView):
                     "location":request.user.location,
                     "user_id": request.user.id,
                     "banner":banner,
-                    "profile": "http://127.0.0.1:8000" + request.user.profile.url,
+                    "profile": "http://10.4.2.62:8000" + request.user.profile.url,
                     "email": request.user.email,
                 }
         return Response(status=status.HTTP_200_OK,data={'user':user_data})
@@ -382,7 +382,7 @@ class ChangeProfileBanner(APIView):
         request.user.banner.save(banner.name, banner, save=True)
 
         if request.user.profile:
-            prof = "http://127.0.0.1:8000" + request.user.profile.url
+            prof = "http://10.4.2.62:8000" + request.user.profile.url
         else:
             prof = None
         user_data = {
@@ -392,7 +392,7 @@ class ChangeProfileBanner(APIView):
                     "location":request.user.location,
                     "user_id": request.user.id,
                     "profile": prof,
-                    "banner": "http://127.0.0.1:8000" + request.user.banner.url,
+                    "banner": "http://10.4.2.62:8000" + request.user.banner.url,
                     "email": request.user.email,
                 }
         return Response(status=status.HTTP_200_OK,data={'user':user_data})
@@ -1058,3 +1058,11 @@ class GetUserProfileBundle(generics.RetrieveAPIView):
         kwargs['context'] = {'request':self.request}
         return serializer_class(*args, **kwargs)
         
+
+class GetNotficationCount(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request):
+
+        count = Notification.objects.filter(user=request.user,is_read=False).count()
+        return Response(status=status.HTTP_200_OK,data=count)

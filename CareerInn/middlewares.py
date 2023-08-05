@@ -45,8 +45,16 @@ class JwtAuthForAsgi(BaseMiddleware):
 
     async def __call__(self, scope,recieve,send) -> Any:
         close_old_connections()
+        is_interview = True
+        path = scope.get("path", "")
+
+        if not "peersocket" in path:
+            is_interview = False
+
+        if is_interview:
+            target = parse_qs(scope['query_string'].decode("utf8"))['target'][0]   
+
         token = parse_qs(scope['query_string'].decode("utf8"))['token'][0]   
-        target = parse_qs(scope['query_string'].decode("utf8"))['target'][0]   
 
         try:
             UntypedToken(token)
@@ -70,25 +78,25 @@ class JwtAuthForAsgi(BaseMiddleware):
             token_data = jwt_decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 
             scope['user'] = await get_user(token_data)
+            if is_interview:
+                target = await get_interview_target(target)
 
-            target = await get_interview_target(target)
-
-            if isinstance(target,AnonymousUser):
-                response = {'error': 'Invalid target id'}
-            
-                await send({
-                    'type': 'http.response.start',
-                    'status': 404,
-                    'headers': [
-                        (b'content-type', b'application/json'),
-                    ],
-                })
-                await send({
-                    'type': 'http.response.body',
-                    'body': json.dumps(response).encode('utf-8'),
-                })
-            else:
-                scope['target'] = target
+                if isinstance(target,AnonymousUser):
+                    response = {'error': 'Invalid target id'}
+                
+                    await send({
+                        'type': 'http.response.start',
+                        'status': 404,
+                        'headers': [
+                            (b'content-type', b'application/json'),
+                        ],
+                    })
+                    await send({
+                        'type': 'http.response.body',
+                        'body': json.dumps(response).encode('utf-8'),
+                    })
+                else:
+                    scope['target'] = target
 
         return await super().__call__(scope,recieve,send)
     

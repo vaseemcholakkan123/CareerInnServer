@@ -45,3 +45,21 @@ class PeerConnectionConsumer(AsyncConsumer):
 
     async def chat_message(self,event):
         await self.send({'type':'websocket.send','text':event['text']})
+
+
+
+class NotificationConsumer(AsyncConsumer):
+
+    async def websocket_connect(self,event):
+        user = self.scope['user']
+        self.chatroom = f'user_notification_{user.id}'
+
+        await self.channel_layer.group_add(
+            self.chatroom,
+            self.channel_name
+        )
+        
+        await self.send({"type": "websocket.accept"})
+
+    async def notification_message(self,event):
+        await self.send({'type':'websocket.send','text':'new_notification'})

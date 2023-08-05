@@ -166,7 +166,7 @@ class commentSerializer(serializers.ModelSerializer):
     user = UserSerializer(many = False,read_only = True)
     class Meta:
         model = comment
-        fields = ('user','comment_text','commented_on')
+        fields = ('user','comment_text','commented_on','id')
 
 class FollowerSerializer(serializers.ModelSerializer):
     user = UserSerializer(many=False,read_only=True)

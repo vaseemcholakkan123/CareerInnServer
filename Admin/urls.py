@@ -17,6 +17,8 @@ urlpatterns = [
     path('block-user-list/<user_id>/',views.BlockUserFromList.as_view()),
     path('unblock-user-list/<user_id>/',views.UnblockUserFromList.as_view()),
     path('users/',views.RetrieveUsers.as_view()),
+    path('get-news/',views.GetNews.as_view()),
+    
 ]
 
 urlpatterns = urlpatterns + router.urls
