@@ -1237,7 +1237,7 @@ class GetPaymentSession(APIView):
             ],
             mode='payment',
             customer_email = email,
-            success_url =  settings.BACKEND + f'careerinn-api/user/payment-success/?session_id={{CHECKOUT_SESSION_ID}}&payment_type={payment_type}',
+            success_url =  settings.BACKEND + f'/careerinn-api/user/payment-success/?session_id={{CHECKOUT_SESSION_ID}}&payment_type={payment_type}',
             cancel_url = settings.FRONTEND + '/premium',
         )
 
