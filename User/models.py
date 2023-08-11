@@ -24,6 +24,9 @@ class User(AbstractUser):
     location = models.CharField(null=True,blank=True)
     skills = models.ManyToManyField(Skill,blank=True)
     company = models.ForeignKey('Employer.Company', on_delete=models.SET_NULL, null=True, blank=True)
+    is_premium_user = models.BooleanField(default=False)
+    resume = models.FileField(upload_to='resume',null=True)
+    premium_end_date = models.DateTimeField(null=True,blank=True)
 
 class Education(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE)

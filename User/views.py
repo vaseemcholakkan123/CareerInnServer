@@ -12,8 +12,14 @@ from datetime import datetime,timedelta
 from django.conf import settings
 from .CustomMixins import *
 from Employer.models import Job,Applicant
-from Employer.serializers import CompanySerializer,UserJobserializer
+from Employer.serializers import CompanySerializer,UserJobserializer,CompanyJobSerializer
 from .signals import followNotification
+from CareerInnsocket.models import ChatThread,Chatmessage
+from django.db.models import Q
+from Employer.models import Company
+import stripe
+from Admin.models import Order
+from django.utils import timezone
 
 # Create your views here.
 
@@ -105,11 +111,11 @@ class UserLogin(APIView):
                             data={"message": "Account not verified"},
                         )
                 if user.profile:
-                    prof = "http://10.4.2.62:8000" + user.profile.url
+                    prof = settings.BACKEND + user.profile.url
                 else:
                     prof = None
                 if user.banner:
-                    banner = "http://10.4.2.62:8000" + user.banner.url
+                    banner = settings.BACKEND + user.banner.url
                 else:
                     banner = None
                 user_data = {
@@ -121,6 +127,8 @@ class UserLogin(APIView):
                     "banner":banner,
                     "profile": prof,
                     "email": user.email,
+                    "is_premium_user": user.is_premium_user,
+                    "resume": user.resume.name if user.resume else None,
                 }
                 return Response(
                     status=status.HTTP_202_ACCEPTED,
@@ -148,7 +156,6 @@ class VerifyOtp(APIView):
     def post(self,request):
         username = request.data.pop('username',None)
         otp = request.data.pop('otp',None)
-        print(username,otp)
 
         if username and otp:
 
@@ -194,7 +201,6 @@ class ChangePassword(APIView):
     def post(self,request):
         password = self.request.data.get('password',None)
         username = self.request.data.get('username',None)
-        print(password,username)
         if not password or not username:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         
@@ -315,7 +321,6 @@ class ChangeDetails(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST,data={'message':'details not provided'})
 
         if form['username'] != request.user.username:
-            print('sertinf username')
             request.user.username = form['username']
 
         
@@ -331,7 +336,7 @@ class ChangeDetails(APIView):
         try:
             request.user.save()
             if request.user.banner:
-                banner = "http://10.4.2.62:8000" + request.user.banner.url
+                banner = settings.BACKEND + request.user.banner.url
             else:
                 banner = None
             user_data = {
@@ -341,8 +346,11 @@ class ChangeDetails(APIView):
                     "location":request.user.location,
                     "user_id": request.user.id,
                     "banner":banner,
-                    "profile": "http://10.4.2.62:8000" + request.user.profile.url,
+                    "profile": settings.BACKEND + request.user.profile.url,
                     "email": request.user.email,
+                    "is_premium_user": request.user.is_premium_user,
+                    "resume": request.user.resume.name if request.user.resume else None,
+
                 }
             return Response(status=status.HTTP_200_OK,data={'user':user_data})
         except Exception as e:
@@ -357,7 +365,7 @@ class ChangeProfilePicture(APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST,data='No embedded profile')
         request.user.profile.save(profile.name, profile, save=True)
         if request.user.banner:
-            banner = "http://10.4.2.62:8000" + request.user.banner.url
+            banner = settings.BACKEND + request.user.banner.url
         else:
             banner = None
         user_data = {
@@ -367,8 +375,11 @@ class ChangeProfilePicture(APIView):
                     "location":request.user.location,
                     "user_id": request.user.id,
                     "banner":banner,
-                    "profile": "http://10.4.2.62:8000" + request.user.profile.url,
+                    "profile": settings.BACKEND + request.user.profile.url,
                     "email": request.user.email,
+                    "is_premium_user": request.user.is_premium_user,
+                    "resume": request.user.resume.name if request.user.resume else None,
+
                 }
         return Response(status=status.HTTP_200_OK,data={'user':user_data})
 
@@ -382,7 +393,7 @@ class ChangeProfileBanner(APIView):
         request.user.banner.save(banner.name, banner, save=True)
 
         if request.user.profile:
-            prof = "http://10.4.2.62:8000" + request.user.profile.url
+            prof = settings.BACKEND + request.user.profile.url
         else:
             prof = None
         user_data = {
@@ -392,8 +403,11 @@ class ChangeProfileBanner(APIView):
                     "location":request.user.location,
                     "user_id": request.user.id,
                     "profile": prof,
-                    "banner": "http://10.4.2.62:8000" + request.user.banner.url,
+                    "banner": settings.BACKEND + request.user.banner.url,
                     "email": request.user.email,
+                    "is_premium_user": request.user.is_premium_user,
+                    "resume": request.user.resume.name if request.user.resume else None,
+
                 }
         return Response(status=status.HTTP_200_OK,data={'user':user_data})
 
@@ -498,8 +512,6 @@ class FollowUser(APIView):
                 thread.first().delete()
                 return Response(status=status.HTTP_200_OK)
             else:
-                print('exists not creating one')
-
                 c = connections.objects.create(user=request.user)
                 c.following.add(target)
                 c.save()
@@ -1066,3 +1078,267 @@ class GetNotficationCount(APIView):
 
         count = Notification.objects.filter(user=request.user,is_read=False).count()
         return Response(status=status.HTTP_200_OK,data=count)
+    
+
+class GetChatThreads(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChatThreadSerialzer
+
+    def get_queryset(self):
+        self.queryset = ChatThread.objects.by_user(user=self.request.user)
+        return super().get_queryset()
+    
+
+class GetFollowerBySearching(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        query = request.data['query']
+
+        if not query:
+            return Response(status=status.HTTP_404_NOT_FOUND,data='No query to populate data')
+        
+        following_users = connections.objects.filter(user=request.user)
+
+        query_result = following_users.filter(following__username__icontains=query)
+
+        usrs = []
+
+        for c_obj in query_result:
+            usrs.append(c_obj.following.all()[0])
+
+        serializer_data = UserSerializer( usrs,many=True).data
+
+        return Response(data=serializer_data, status=status.HTTP_200_OK)
+    
+
+class GetChatMessages(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChatMessageSerializer
+
+    def get_queryset(self, *args,**kwargs):
+        
+        target_id = self.kwargs.get('target_id',None)
+
+        thread = ChatThread.objects.filter(
+            Q(primary_user=self.request.user, secondary_user__id=target_id) | 
+            Q(primary_user__id=target_id, secondary_user=self.request.user)
+            )
+        
+        if thread.exists():
+            self.queryset = thread.first().chatmessage_thread.all()
+        else:
+            self.queryset = []
+
+
+        return super().get_queryset()
+
+
+class SearchList(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = NormalPagination
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        
+        query = kwargs.get('query','')
+
+        posts_count = Post.objects.filter(content_text__icontains = query).count()
+        jobs_count = Job.objects.filter(name__icontains = query).count()
+        users_count = User.objects.filter(username__icontains = query).count()
+        companys_count = Company.objects.filter(name__icontains = query).count()
+
+        response.data['posts_count'] = posts_count
+        response.data['jobs_count'] = jobs_count
+        response.data['companys_count'] = companys_count
+        response.data['users_count'] = users_count
+        return response
+
+
+    def get_serializer(self, *args, **kwargs):
+
+        kwargs.setdefault('context', self.get_serializer_context())
+        kwargs['context'] = {'request':self.request}
+
+        res_type = 'posts'
+        res_type = self.kwargs.get('res_type',res_type)
+
+        if res_type == 'posts':
+            self.serializer_class = postsSeriallizer
+        elif res_type == 'jobs':
+            self.serializer_class = CompanyJobSerializer
+        elif res_type == 'users':
+            self.serializer_class = UserSmallSerializer
+        elif res_type == 'company':
+            self.serializer_class = CompanySerializer
+        else:
+            self.serializer_class = postsSeriallizer
+
+        return super().get_serializer(*args, **kwargs)
+    
+    def get_queryset(self):
+        query = ''
+        res_type = 'posts'
+
+        query = self.kwargs.get('query',query)
+        res_type = self.kwargs.get('res_type',res_type)
+
+        if res_type == 'posts':
+            self.queryset = Post.objects.filter(content_text__icontains = query)
+        elif res_type == 'jobs':
+            self.queryset = Job.objects.filter(name__icontains = query)
+        elif res_type == 'users':
+            self.queryset = User.objects.filter(username__icontains = query)
+        elif res_type == 'company':
+            self.queryset = Company.objects.filter(name__icontains = query)
+        else:
+            self.queryset = Post.objects.filter(content_text__icontains = query)
+
+
+        return super().get_queryset()
+
+
+class GetPaymentSession(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        plan_type = request.data.get('plan_type',None)
+        email = request.data.get('email',None)
+
+        if not plan_type:
+            return Response(status=status.HTTP_400_BAD_REQUEST,data='No plan type provided')
+        if not email:
+            return Response(status=status.HTTP_400_BAD_REQUEST,data='no email provided')
+
+        price = None
+        payment_type = None
+
+        if plan_type == 'monthly':
+            price = 'price_1Nd95HSBhEf3FI4FCcuaqoe7'
+            payment_type = 'monthly'
+
+        elif plan_type == 'yearly':
+            price = 'price_1Nd96NSBhEf3FI4FSPKsppOS'
+            payment_type = 'yearly'
+
+
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST,data='Invalid plan type')
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        stripe_session = stripe.checkout.Session.create(
+            line_items=[
+                {
+                    # Provide the exact Price ID (for example, pr_1234) of the product you want to sell
+                    'price': price,
+                    'quantity': 1,
+                },
+            ],
+            mode='payment',
+            customer_email = email,
+            success_url =  settings.BACKEND + f'/user/payment-success/?session_id={{CHECKOUT_SESSION_ID}}&payment_type={payment_type}',
+            cancel_url = settings.FRONTEND + '/premium',
+        )
+
+        return Response(status=status.HTTP_200_OK,data = stripe_session.url)
+
+class PaymentSuccess(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        from django.shortcuts import redirect
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        checkout_session_id = request.GET.get('session_id',None)
+        payment_type = request.GET.get('payment_type',None)
+        session = stripe.checkout.Session.retrieve(checkout_session_id)
+
+        if session.payment_status == 'paid' and session.status == 'complete':
+            usr_email = session.customer_email
+            usr = User.objects.get(email=usr_email)
+            premium_end = timezone.now()
+            price = 0
+
+            if payment_type == 'monthly':
+                premium_end = timezone.now() + timedelta(days=30)
+                price = 299
+            else:
+                premium_end = timezone.now() + timedelta(days=365)
+                price = 1599
+                
+            Order.objects.create(user=usr,type=payment_type,payment_id=session.id,price=price)
+            usr.is_premium_user = True
+
+            if usr.is_premium_user and usr.premium_end_date > timezone.now():
+                premium_end += usr.premium_end_date - timezone.now()
+
+            usr.premium_end_date = premium_end
+            usr.save()
+
+        return redirect(settings.FRONTEND + '/premium/payment-success')
+
+
+class SaveResume(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self,request):
+
+        if not request.user.is_premium_user:
+            return Response(status=status.HTTP_400_BAD_REQUEST,data="Yo'ure not a premium user")
+
+        resume = request.FILES.get('resume')
+        if not resume:
+            return Response(status=status.HTTP_400_BAD_REQUEST,data='No embedded resume')
+        request.user.resume = resume
+        request.user.save()
+
+        if request.user.banner:
+            banner = settings.BACKEND + request.user.banner.url
+        else:
+            banner = None
+
+        if request.user.profile:
+            prof = settings.BACKEND + request.user.profile.url
+        else:
+            prof = None
+
+        user_data = {
+                    "username": request.user.username,
+                    "info":request.user.info,
+                    "mobile":request.user.mobile,
+                    "location":request.user.location,
+                    "user_id": request.user.id,
+                    "banner":banner,
+                    "profile": prof,
+                    "email": request.user.email,
+                    "is_premium_user": request.user.is_premium_user,
+                    "resume": request.user.resume.name,
+
+                }
+        return Response(status=status.HTTP_200_OK,data={'user':user_data})
+
+class GetPremiumDelta(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request):
+        usr = request.user
+        data = ''
+        end_date = None
+        if not usr.is_premium_user:
+            data = 'not premium user'
+        else:
+            end_date = usr.premium_end_date
+
+        if end_date:
+            delta = end_date - timezone.now()
+            if delta.days <= 0:
+                usr.is_premium_user = False
+                usr.save()
+                data = 'premium_ended'
+            elif delta.days > 7:
+                data = 'valid'
+            elif delta.days <= 7 and delta.days != 0:
+                data = delta.days
+
+        return Response(status=status.HTTP_200_OK , data=data)

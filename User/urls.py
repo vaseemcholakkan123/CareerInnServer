@@ -69,12 +69,22 @@ urlpatterns = [
     path('get-user-bundle/<int:pk>/',views.GetUserProfileBundle.as_view(),name='get-user-bundle'),
     path('get-different-user-posts/<user_id>/',views.GetDifferentUserPosts.as_view(),name='get-different-user-posts'),
     path('people-knows/',views.PeopleKnow.as_view(),name='people-u-know'),
+    path('get-chat-threads/',views.GetChatThreads.as_view(),name='get-chat-threads'),
+    path('get-following-by-query/',views.GetFollowerBySearching.as_view(),name='get-following-by-query'),
+    path('get-thread-messages/<target_id>/',views.GetChatMessages.as_view(),name='get-thread-messages'),
+    path('search-data/<query>/<res_type>',views.SearchList.as_view(),name='search'),
+
+    # payments
+    path('get-payment-session/',views.GetPaymentSession.as_view()),
+    path('payment-success/',views.PaymentSuccess.as_view()),
+    path('save-resume/',views.SaveResume.as_view()),
 
     # Education and Experience
 
     path('add-education/',views.AddEducation.as_view(),name='Add-Education'),
     path('get-education/',views.RetrieveUserEducation.as_view(),name='user-education'),
     path('update-delete-education/<int:pk>/',views.UpdateEducation.as_view(),name='update-destroy-education'),
+    path('get-premium-validity/',views.GetPremiumDelta.as_view()),
 
     path('add-experience/',views.AddExperience.as_view(),name='Add-experience'),
     path('get-experience/',views.RetrieveUserExperence.as_view(),name='user-experience'),

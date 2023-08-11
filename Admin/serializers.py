@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import News
+from .models import News,Order
+from User.serailizers import UserSmallSerializer
 from Employer.models import Department,Company
 
 class NewsSerializer(serializers.ModelSerializer):
@@ -18,3 +19,9 @@ class AdminDepartmentSerializer(serializers.ModelSerializer):
 
     def get_no_of_company(self,obj):
         return Company.objects.filter(department=obj).count()
+    
+class OrderSerializer(serializers.ModelSerializer):
+    user = UserSmallSerializer(many=False)
+    class Meta:
+        model = Order
+        fields = '__all__'

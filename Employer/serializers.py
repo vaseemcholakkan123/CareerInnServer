@@ -59,7 +59,9 @@ class CompanyJobSerializer(serializers.ModelSerializer):
     responsibilities = JobResponsibilitiesSerializer(many=True,read_only=True)
     company = CompanySerializer(many=False,read_only=True)
     applicants_count = serializers.SerializerMethodField()
+    interview_count = serializers.SerializerMethodField()
     user_is_applied = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Job
@@ -67,6 +69,9 @@ class CompanyJobSerializer(serializers.ModelSerializer):
 
     def get_applicants_count(self,obj):
         return obj.applicants.count()
+    
+    def get_interview_count(self,obj):
+        return obj.applicants.filter(is_interviewed=True).count()
 
     def get_user_is_applied(self,obj):
 

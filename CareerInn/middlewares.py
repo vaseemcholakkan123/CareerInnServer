@@ -45,13 +45,13 @@ class JwtAuthForAsgi(BaseMiddleware):
 
     async def __call__(self, scope,recieve,send) -> Any:
         close_old_connections()
-        is_interview = True
+        is_target_needed = True
         path = scope.get("path", "")
 
-        if not "peersocket" in path:
-            is_interview = False
+        if not "peersocket" in path and not "chat" in path:
+            is_target_needed = False
 
-        if is_interview:
+        if is_target_needed:
             target = parse_qs(scope['query_string'].decode("utf8"))['target'][0]   
 
         token = parse_qs(scope['query_string'].decode("utf8"))['token'][0]   
@@ -78,7 +78,7 @@ class JwtAuthForAsgi(BaseMiddleware):
             token_data = jwt_decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 
             scope['user'] = await get_user(token_data)
-            if is_interview:
+            if is_target_needed:
                 target = await get_interview_target(target)
 
                 if isinstance(target,AnonymousUser):

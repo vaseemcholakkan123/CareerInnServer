@@ -6,12 +6,12 @@ from User.models import User, Report, Post
 from django.contrib.auth import authenticate
 from Employer.models import Department
 from rest_framework.viewsets import ModelViewSet
-from .serializers import NewsSerializer, AdminDepartmentSerializer
+from .serializers import NewsSerializer, AdminDepartmentSerializer , OrderSerializer
 from User.views import NormalPagination,SmallPagination
 from .models import *
 from User.serailizers import ReportSerializer,AdminUserSerializer
 from User.signals import post_banned
-
+from django.conf import settings
 
 
 # Create your views here.
@@ -58,11 +58,11 @@ class AdminLogin(APIView):
                     )
 
                 if user.profile:
-                    prof = "http://127.0.0.1:8000" + user.profile.url
+                    prof = settings.BACKEND + user.profile.url
                 else:
                     prof = None
                 if user.banner:
-                    banner = "http://127.0.0.1:8000" + user.banner.url
+                    banner = settings.BACKEND + user.banner.url
                 else:
                     banner = None
                 user_data = {
@@ -216,3 +216,16 @@ class GetNews(generics.ListAPIView):
     queryset = News.objects.all()
     serializer_class  = NewsSerializer
     pagination_class = SmallPagination
+
+class GetOrders(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = Order.objects.all()
+    serializer_class  = OrderSerializer
+    pagination_class = NormalPagination
+
+    def get_queryset(self):
+        from_date = self.kwargs.get('from_date')
+        to_date = self.kwargs.get('to_date')
+        self.queryset = self.queryset.filter(payment_date__range=(from_date,to_date))
+
+        return super().get_queryset()

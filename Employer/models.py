@@ -62,6 +62,9 @@ class Job(models.Model):
     questions = models.ManyToManyField(JobQuestions)
     applicants = models.ManyToManyField(Applicant,blank=True)
 
+    def __str__(self) -> str:
+        return self.name
+
     
 class RejectedApplicant(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE)

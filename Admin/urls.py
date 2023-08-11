@@ -18,6 +18,7 @@ urlpatterns = [
     path('unblock-user-list/<user_id>/',views.UnblockUserFromList.as_view()),
     path('users/',views.RetrieveUsers.as_view()),
     path('get-news/',views.GetNews.as_view()),
+    path('orders/<from_date>/<to_date>/',views.GetOrders.as_view()),
     
 ]
 

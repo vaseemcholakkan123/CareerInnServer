@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import AnonymousUser 
 from .models import *
+from CareerInnsocket.models import ChatThread,Chatmessage
 
 class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,7 +23,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id","username","info", "posts_got_reported" , "is_blocked" , 'profile')
+        fields = ("id","username","info", "posts_got_reported" , "is_blocked" , 'profile','is_premium_user')
 
     def get_posts_got_reported(self,usr):
         if isinstance(usr,AnonymousUser):
@@ -30,13 +31,16 @@ class AdminUserSerializer(serializers.ModelSerializer):
 
         return Report.objects.filter(post__posted_user=usr).count()
         
-
+class UserSmallSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id','username','info','profile','date_joined','is_premium_user')
 
 class UserSerializer(serializers.ModelSerializer):
     is_ceo = serializers.SerializerMethodField()
     class Meta:
         model = User
-        fields = ('id','username','info','profile','is_ceo','date_joined')
+        fields = ('id','username','info','profile','is_ceo','date_joined','is_premium_user')
 
     def get_is_ceo(self,usr):
 
@@ -68,7 +72,7 @@ class DifferentUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id','username','info','profile','date_joined' , 'is_following' ,'banner' , 'location' , 'skills' , 'education' , 'experience' , 'projects' )
+        fields = ('id','username','info','profile','date_joined' , 'is_following' ,'banner' , 'location' , 'skills' , 'education' , 'experience' , 'projects' , 'is_premium_user' )
 
     def get_education(self,usr):
         return EducationSerializer(Education.objects.filter(user=usr),many=True).data
@@ -216,3 +220,18 @@ class ReportSerializer(serializers.ModelSerializer):
     def get_total_reports(self,obj):
         reports = Report.objects.filter(post=obj.post)
         return reports.count()
+    
+
+class ChatThreadSerialzer(serializers.ModelSerializer):
+    primary_user = UserSerializer(many=False , read_only=True)
+    secondary_user = UserSerializer(many=False , read_only=True)
+
+    class Meta:
+        model = ChatThread
+        fields = '__all__'
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    user = UserSmallSerializer(many=False)
+    class Meta:
+        model = Chatmessage
+        fields = '__all__'

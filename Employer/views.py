@@ -59,8 +59,11 @@ class ApplyForJob(APIView):
         if answer_validation is None:
             return Response(status=status.HTTP_400_BAD_REQUEST,data='no answer validation found')
         
-        if not resume:
+        if not resume and not request.user.is_premium_user and not request.user.resume:
             return Response(status=status.HTTP_400_BAD_REQUEST,data='no attached resume')
+        
+        if not resume and request.user.is_premium_user:
+            resume = request.user.resume
 
         target_job = Job.objects.filter(id=target_job)\
 
@@ -193,22 +196,22 @@ class UserJobs(generics.ListAPIView):
         skills_arr = []
         self.queryset = Job.objects.filter(is_closed=False)
 
-        if not work_type and not work_time and not department and not skills:
-            user_skills = self.request.user.skills.all()
-            local_q = self.queryset.filter(skills_required__in=user_skills).distinct()
-            print(local_q[0].name,'llllllllllll')
+        # if not work_type and not work_time and not department and not skills:
+        #     user_skills = self.request.user.skills.all()
+        #     local_q = self.queryset.filter(skills_required__in=user_skills).distinct()
+        #     print(local_q[0].name,'llllllllllll')
 
-            print('disabled')
-            self.queryset = self.queryset.exclude(pk__in=local_q)
-            for s in self.queryset:
-                print(s.name)
+        #     print('disabled')
+        #     self.queryset = self.queryset.exclude(pk__in=local_q)
+        #     for s in self.queryset:
+        #         print(s.name)
 
-            print('final========')
-            self.queryset = local_q | self.queryset.distinct()
+        #     print('final========')
+        #     self.queryset = local_q | self.queryset.distinct()
 
-            for s in self.queryset:
-                print(s.name)
-            # self.queryset = self.queryset.distinct()
+        #     for s in self.queryset:
+        #         print(s.name)
+        #     # self.queryset = self.queryset.distinct()
 
 
         if work_type:
@@ -395,7 +398,6 @@ class SelectApplicant(APIView):
         
         applicant = applicant.first()
         applicant.is_selected = True
-        print('setting true')
         applicant.save()
         progress_signal.send(sender=Applicant,instance=applicant,created=False,job_id=str(job.id),thread_img=job.company.logo.url,job_name=job.name)
 

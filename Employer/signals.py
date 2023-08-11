@@ -1,10 +1,11 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save,m2m_changed
 from django.dispatch import receiver
 from django.dispatch import Signal
 from .models import Applicant,Job,RejectedApplicant
 from User.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from User.models import User
 
 progress_signal  = Signal()
 app_channel_layer = get_channel_layer()
@@ -38,8 +39,6 @@ def send_application_progress(sender,instance,created,**kwargs):
     }
 
     async_to_sync(app_channel_layer.group_send)(socket_name, event)
-
-
         
             
 @receiver(post_save , sender = RejectedApplicant)
@@ -54,4 +53,24 @@ def application_rejected_notification(sender,created,instance,**kwargs):
         async_to_sync(app_channel_layer.group_send)(socket_name, event)
 
 
+@receiver(m2m_changed , sender = Job.skills_required.through)
+def job_notification_for_premium_users(sender,action, instance,**kwargs):
+    if action == "post_add":
+        premium_users = User.objects.filter(is_premium_user=True)
+
+        for user in premium_users:
+            skills_matching = False
+            for skill in instance.skills_required.all():
+
+                if skill in user.skills.all():
+                    skills_matching = True
+                    break
+
+            if skills_matching:
+                Notification.objects.create(user=user,rel_img=instance.company.logo.url,content=f'You may have interest for this job {instance.name} by {instance.company.name}',link_thread=instance.id,type='Job')
+                socket_name = f'user_notification_{user.id}'
+                event = {
+                    'type' : 'notification_message',
+                }
+                async_to_sync(app_channel_layer.group_send)(socket_name, event)
 
