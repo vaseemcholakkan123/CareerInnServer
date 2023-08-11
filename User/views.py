@@ -1237,7 +1237,7 @@ class GetPaymentSession(APIView):
             ],
             mode='payment',
             customer_email = email,
-            success_url =  settings.BACKEND + f'/user/payment-success/?session_id={{CHECKOUT_SESSION_ID}}&payment_type={payment_type}',
+            success_url =  settings.BACKEND + f'careerinn-api/user/payment-success/?session_id={{CHECKOUT_SESSION_ID}}&payment_type={payment_type}',
             cancel_url = settings.FRONTEND + '/premium',
         )
 
@@ -1270,7 +1270,7 @@ class PaymentSuccess(APIView):
             Order.objects.create(user=usr,type=payment_type,payment_id=session.id,price=price)
             usr.is_premium_user = True
 
-            if usr.is_premium_user and usr.premium_end_date > timezone.now():
+            if usr.premium_end_date and usr.is_premium_user and usr.premium_end_date > timezone.now():
                 premium_end += usr.premium_end_date - timezone.now()
 
             usr.premium_end_date = premium_end
