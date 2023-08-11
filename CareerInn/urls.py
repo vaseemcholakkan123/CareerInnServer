@@ -21,10 +21,10 @@ from django.conf import settings
 
 
 urlpatterns = [
-    path('djangoadmin/', admin.site.urls),
-    path("user/", include("User.urls")),
-    path("employer/", include("Employer.urls")),
-    path("admin/", include("Admin.urls")),
+    path('careerinn-api/djangoadmin/', admin.site.urls),
+    path("careerinn-api/user/", include("User.urls")),
+    path("careerinn-api/employer/", include("Employer.urls")),
+    path("careerinn-api/admin/", include("Admin.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
