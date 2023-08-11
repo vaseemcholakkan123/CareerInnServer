@@ -68,7 +68,6 @@ class JobMixin:
         request.data['requirements'] = reqs
         # request.data['skills_required'] = skills
         request.data['questions'] = ques
-        print(request.user.company.id,'[[[[[[]]]]]]')
         request.data['company'] = request.user.company.id
 
 
@@ -137,7 +136,6 @@ class JobMixin:
         request.data['requirements'] = reqs
         # request.data['skills_required'] = skills
         request.data['questions'] = ques
-        print(request.user.company.id,'[[[[[[]]]]]]')
         request.data['company'] = request.user.company.id
 
         return self.update(request, *args, **kwargs)
