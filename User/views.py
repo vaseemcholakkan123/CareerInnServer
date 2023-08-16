@@ -864,7 +864,7 @@ class PeopleKnow(generics.ListAPIView):
         for c in usr_bucket:
             f_users = connections.objects.filter(following=c.following.first())
             for u in f_users:
-                if u.user != usr:
+                if u.user != usr and not connections.objects.filter(user=usr,following=u.user).exists():
                     if not u.user in p_n:
                         p_n.append(u.user)
 
